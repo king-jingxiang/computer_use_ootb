@@ -15,3 +15,5 @@ __pycache__
 /install_tools/install_qwen*
 /dev_tools*
 test.ipynb
+.idea
+
