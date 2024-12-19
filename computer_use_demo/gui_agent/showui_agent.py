@@ -38,7 +38,7 @@ class ShowUIActor:
     """
 
     action_map = {
-    'desktop': """
+        'desktop': """
         1. CLICK: Click on an element, value is not applicable and the position [x,y] is required. 
         2. INPUT: Type a string into an element, value is a string to type and the position [x,y] is required. 
         3. HOVER: Hover on an element, value is not applicable and the position [x,y] is required.
@@ -47,7 +47,7 @@ class ShowUIActor:
         6. ESC: ESCAPE operation, value and position are not applicable.
         7. PRESS: Long click on an element, value is not applicable and the position [x,y] is required. 
         """,
-    'phone': """
+        'phone': """
         1. INPUT: Type a string into an element, value is not applicable and the position [x,y] is required. 
         2. SWIPE: Swipe the screen, value is not applicable and the position [[x1,y1], [x2,y2]] is the start and end position of the swipe operation.
         3. TAP: Tap on an element, value is not applicable and the position [x,y] is required.
@@ -62,24 +62,24 @@ class ShowUIActor:
         self.split = split
         self.selected_screen = selected_screen
         self.output_callback = output_callback
-        
+
         if not model_path or not os.path.exists(model_path) or not os.listdir(model_path):
             if awq_4bit:
                 model_path = "showlab/ShowUI-2B-AWQ-4bit"
             else:
                 model_path = "showlab/ShowUI-2B"
-        
+
         self.model = Qwen2VLForConditionalGeneration.from_pretrained(
             model_path,
             torch_dtype=torch.bfloat16,
             device_map="cpu"
         ).to(self.device)
         self.model.eval()
-        
+
         self.min_pixels = 256 * 28 * 28
         self.max_pixels = max_pixels * 28 * 28
         # self.max_pixels = 1344 * 28 * 28
-        
+
         self.processor = AutoProcessor.from_pretrained(
             "Qwen/Qwen2-VL-2B-Instruct",
             # "./Qwen2-VL-2B-Instruct",
@@ -95,12 +95,16 @@ class ShowUIActor:
     def __call__(self, messages):
 
         task = messages
-        
+
         # screenshot
-        screenshot, screenshot_path = get_screenshot(selected_screen=self.selected_screen, resize=True, target_width=1920, target_height=1080)
+        # screenshot, screenshot_path = get_screenshot(selected_screen=self.selected_screen, resize=True, target_width=1920, target_height=1080)
+        screenshot, screenshot_path = get_screenshot(selected_screen=self.selected_screen, resize=True,
+                                                     target_width=1720, target_height=720)
+
         screenshot_path = str(screenshot_path)
         image_base64 = encode_image(screenshot_path)
-        self.output_callback(f'Screenshot for {colorful_text_showui}:\n<img src="data:image/png;base64,{image_base64}">', sender="bot")
+        self.output_callback(
+            f'Screenshot for {colorful_text_showui}:\n<img src="data:image/png;base64,{image_base64}">', sender="bot")
 
         # Use system prompt, task, and action history to build the messages
         messages_for_processor = [
@@ -108,13 +112,14 @@ class ShowUIActor:
                 "role": "user",
                 "content": [
                     {"type": "text", "text": self.system_prompt},
-                    {"type": "image", "image": screenshot_path, "min_pixels": self.min_pixels, "max_pixels": self.max_pixels},
+                    {"type": "image", "image": screenshot_path, "min_pixels": self.min_pixels,
+                     "max_pixels": self.max_pixels},
                     {"type": "text", "text": f"Task: {task}"}
                     # {"type": "text", "text": f"\nAction History: {self.action_history}}
                 ],
             }
         ]
-        
+
         text = self.processor.apply_chat_template(
             messages_for_processor, tokenize=False, add_generation_prompt=True,
         )
@@ -127,10 +132,10 @@ class ShowUIActor:
             return_tensors="pt",
         )
         inputs = inputs.to(self.device)
-        
+
         with torch.no_grad():
             generated_ids = self.model.generate(**inputs, max_new_tokens=128)
-            
+
         generated_ids_trimmed = [
             out_ids[len(in_ids):] for in_ids, out_ids in zip(inputs.input_ids, generated_ids)
         ]
@@ -140,11 +145,16 @@ class ShowUIActor:
 
         # Update action history
         self.action_history += output_text + '\n'
-
+        print(f"output_text: {output_text}")
+        try:
+            click_xy = ast.literal_eval(output_text["position"])
+            labeled_image = self.draw_point(image_inputs[0], click_xy, 10)
+            labeled_image.save(os.path.splitext(screenshot_path)[0] + "_labeled.png")
+        except Exception as e:
+            print(f"Error drawing point: {e}")
         # Return response in expected format
         response = {'content': output_text, 'role': 'assistant'}
         return response
-
 
     def parse_showui_output(self, output_text):
         try:
@@ -177,3 +187,15 @@ class ShowUIActor:
         except Exception as e:
             print(f"Error parsing output: {e}")
             return None
+
+    def draw_point(self, image_input, point=None, radius=5):
+        if isinstance(image_input, str):
+            image = Image.open(BytesIO(requests.get(image_input).content)) if image_input.startswith(
+                'http') else Image.open(image_input)
+        else:
+            image = image_input
+
+        if point:
+            x, y = point[0] * image.width, point[1] * image.height
+            ImageDraw.Draw(image).ellipse((x - radius, y - radius, x + radius, y + radius), fill='red')
+        return image

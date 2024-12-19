@@ -38,7 +38,8 @@ class APIVLMPlanner:
     ):
         self.device = device
         if model == "gpt-4o + ShowUI":
-            self.model = "gpt-4o-2024-11-20"
+            self.model = "/gdata/inference-test-data/Qwen/Qwen2-VL-7B-Instruct-AWQ"
+            # self.model = "gpt-4o-2024-11-20"
         elif model == "gpt-4o-mini + ShowUI":
             self.model = "gpt-4o-mini"  # "gpt-4o-mini"
         elif model == "qwen2-vl-max + ShowUI":
@@ -137,7 +138,7 @@ class APIVLMPlanner:
                 generated_ids_trimmed, skip_special_tokens=True, clean_up_tokenization_spaces=False
             )[0]
 
-        elif self.model == "gpt-4o-2024-11-20":
+        elif self.model == "/gdata/inference-test-data/Qwen/Qwen2-VL-7B-Instruct-AWQ":
             vlm_response, token_usage = run_oai_interleaved(
                 messages=planner_messages,
                 system=self.system_prompt,

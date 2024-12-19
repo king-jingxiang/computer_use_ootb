@@ -56,9 +56,11 @@ def run_oai_interleaved(messages: list, system: str, llm: str, api_key: str, max
 
     # from IPython.core.debugger import Pdb; Pdb().set_trace()
 
-    response = requests.post(
-        "https://api.openai.com/v1/chat/completions", headers=headers, json=payload
-    )
+    # response = requests.post(
+    #     "https://api.openai.com/v1/chat/completions", headers=headers, json=payload
+    # )
+    headers["Authorization"] = f"Bearer token-abc123"
+    response = requests.post("http://10.0.102.69:8000/v1/chat/completions", headers=headers, json=payload)
 
     try:
         text = response.json()['choices'][0]['message']['content']

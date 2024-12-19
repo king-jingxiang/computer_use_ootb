@@ -58,7 +58,7 @@ PROVIDER_TO_DEFAULT_MODEL_NAME: dict[APIProvider, str] = {
     # APIProvider.QWEN: "qwen2vl",
 }
 
-
+showui_loop_count=0
 def sampling_loop_sync(
     *,
     model: str,
@@ -78,6 +78,7 @@ def sampling_loop_sync(
     """
     Synchronous agentic sampling loop for the assistant/tool interaction of computer use.
     """
+    global showui_loop_count
     
     if torch.cuda.is_available(): device = torch.device("cuda")
     elif torch.backends.mps.is_available(): device = torch.device("mps")
@@ -130,7 +131,7 @@ def sampling_loop_sync(
         if showui_awq_4bit:
             showui_model_path = "./showui-2b-awq-4bit/"
         else:
-            showui_model_path = "./showui-2b/"
+            showui_model_path = "showlab/ShowUI-2B"
         actor = ShowUIActor(
             model_path=showui_model_path,  
             # Replace with your local path, e.g., "C:\\code\\ShowUI-2B", "/Users/your_username/ShowUI-2B/".
