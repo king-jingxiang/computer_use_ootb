@@ -97,9 +97,9 @@ class ShowUIActor:
         task = messages
 
         # screenshot
-        # screenshot, screenshot_path = get_screenshot(selected_screen=self.selected_screen, resize=True, target_width=1920, target_height=1080)
-        screenshot, screenshot_path = get_screenshot(selected_screen=self.selected_screen, resize=True,
-                                                     target_width=1720, target_height=720)
+        screenshot, screenshot_path = get_screenshot(selected_screen=self.selected_screen, resize=True, target_width=1920, target_height=1080)
+        # screenshot, screenshot_path = get_screenshot(selected_screen=self.selected_screen, resize=True,
+        #                                              target_width=1720, target_height=720)
 
         screenshot_path = str(screenshot_path)
         image_base64 = encode_image(screenshot_path)
@@ -147,13 +147,14 @@ class ShowUIActor:
         self.action_history += output_text + '\n'
         print(f"output_text: {output_text}")
         try:
-            click_xy = ast.literal_eval(output_text["position"])
+            click_xy = ast.literal_eval(output_text)["position"]
             labeled_image = self.draw_point(image_inputs[0], click_xy, 10)
             labeled_image.save(os.path.splitext(screenshot_path)[0] + "_labeled.png")
         except Exception as e:
             print(f"Error drawing point: {e}")
         # Return response in expected format
         response = {'content': output_text, 'role': 'assistant'}
+
         return response
 
     def parse_showui_output(self, output_text):

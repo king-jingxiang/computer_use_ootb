@@ -224,6 +224,10 @@ class ComputerTool(BaseAnthropicTool):
             
             if action == "mouse_move":
                 pyautogui.moveTo(x, y)
+                for i in range(2):
+                    pyautogui.press('ctrl')
+                    time.sleep(0.1)
+                time.sleep(1)
                 return ToolResult(output=f"Moved mouse to ({x}, {y})")
             elif action == "left_click_drag":
                 current_x, current_y = pyautogui.position()
@@ -332,6 +336,10 @@ class ComputerTool(BaseAnthropicTool):
             
             if action == "mouse_move":
                 pyautogui.moveTo(x, y)
+                for i in range(2):
+                    pyautogui.press('ctrl')
+                    time.sleep(0.1)
+                time.sleep(1)
                 return ToolResult(output=f"Moved mouse to ({x}, {y})")
             elif action == "left_click_drag":
                 current_x, current_y = pyautogui.position()
