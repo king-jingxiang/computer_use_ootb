@@ -15,7 +15,7 @@ from transformers import AutoProcessor, Qwen2VLForConditionalGeneration
 from computer_use_demo.gui_agent.llm_utils.oai import encode_image
 from computer_use_demo.tools.colorful_text import colorful_text_showui, colorful_text_vlm
 from computer_use_demo.tools.screen_capture import get_screenshot
-
+import json
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
 
 
@@ -147,7 +147,8 @@ class ShowUIActor:
         self.action_history += output_text + '\n'
         print(f"output_text: {output_text}")
         try:
-            click_xy = ast.literal_eval(output_text["position"])
+            data = ast.literal_eval(output_text)
+            click_xy = data["position"]
             labeled_image = self.draw_point(image_inputs[0], click_xy, 10)
             labeled_image.save(os.path.splitext(screenshot_path)[0] + "_labeled.png")
         except Exception as e:
