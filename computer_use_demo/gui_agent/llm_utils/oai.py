@@ -60,7 +60,11 @@ def run_oai_interleaved(messages: list, system: str, llm: str, api_key: str, max
     #     "https://api.openai.com/v1/chat/completions", headers=headers, json=payload
     # )
     headers["Authorization"] = f"Bearer 123456"
-    response = requests.post("http://10.1.30.3:48000/v1/chat/completions", headers=headers, json=payload)
+    # payload["model"] = "/models/Qwen/Qwen2-VL-7B-Instruct"
+    # response = requests.post("http://10.1.30.3:48000/v1/chat/completions", headers=headers, json=payload)
+    payload["model"] = "/models/Qwen/Qwen2-VL-72B-Instruct"
+    response = requests.post("http://10.1.30.3:48002/v1/chat/completions", headers=headers, json=payload)
+
 
     try:
         text = response.json()['choices'][0]['message']['content']

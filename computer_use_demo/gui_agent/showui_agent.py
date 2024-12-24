@@ -15,7 +15,10 @@ from transformers import AutoProcessor, Qwen2VLForConditionalGeneration
 from computer_use_demo.gui_agent.llm_utils.oai import encode_image
 from computer_use_demo.tools.colorful_text import colorful_text_showui, colorful_text_vlm
 from computer_use_demo.tools.screen_capture import get_screenshot
+from computer_use_demo.models.showui_model import ShowUIModel
+
 import json
+
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
 
 
@@ -63,41 +66,46 @@ class ShowUIActor:
         self.selected_screen = selected_screen
         self.output_callback = output_callback
 
-        if not model_path or not os.path.exists(model_path) or not os.listdir(model_path):
-            if awq_4bit:
-                model_path = "showlab/ShowUI-2B-AWQ-4bit"
-            else:
-                model_path = "showlab/ShowUI-2B"
-
-        self.model = Qwen2VLForConditionalGeneration.from_pretrained(
-            model_path,
-            torch_dtype=torch.bfloat16,
-            device_map="cpu"
-        ).to(self.device)
-        self.model.eval()
+        # if not model_path or not os.path.exists(model_path) or not os.listdir(model_path):
+        #     if awq_4bit:
+        #         model_path = "showlab/ShowUI-2B-AWQ-4bit"
+        #     else:
+        #         model_path = "showlab/ShowUI-2B"
+        #
+        # self.model = Qwen2VLForConditionalGeneration.from_pretrained(
+        #     model_path,
+        #     torch_dtype=torch.bfloat16,
+        #     device_map="cpu"
+        # ).to(self.device)
+        # self.model.eval()
 
         self.min_pixels = 256 * 28 * 28
         self.max_pixels = max_pixels * 28 * 28
         # self.max_pixels = 1344 * 28 * 28
 
-        self.processor = AutoProcessor.from_pretrained(
-            "Qwen/Qwen2-VL-2B-Instruct",
-            # "./Qwen2-VL-2B-Instruct",
-            min_pixels=self.min_pixels,
-            max_pixels=self.max_pixels
-        )
+        # self.processor = AutoProcessor.from_pretrained(
+        #     "Qwen/Qwen2-VL-2B-Instruct",
+        #     # "./Qwen2-VL-2B-Instruct",
+        #     min_pixels=self.min_pixels,
+        #     max_pixels=self.max_pixels
+        # )
         self.system_prompt = self._NAV_SYSTEM.format(
             _APP=split,
             _ACTION_SPACE=self.action_map[split]
         )
         self.action_history = ''  # Initialize action history
+        base_url = "http://10.1.30.3:48001/v1"
+        api_key = "123456"
+        self.show_ui_model = ShowUIModel(model_name="/models/AI-ModelScope/ShowUI-2B", base_url=base_url,
+                                         api_key=api_key)
 
     def __call__(self, messages):
 
         task = messages
 
         # screenshot
-        screenshot, screenshot_path = get_screenshot(selected_screen=self.selected_screen, resize=True, target_width=1920, target_height=1080)
+        screenshot, screenshot_path = get_screenshot(selected_screen=self.selected_screen, resize=True,
+                                                     target_width=1920, target_height=1080)
         # screenshot, screenshot_path = get_screenshot(selected_screen=self.selected_screen, resize=True,
         #                                              target_width=1720, target_height=720)
 
@@ -119,36 +127,36 @@ class ShowUIActor:
                 ],
             }
         ]
-
-        text = self.processor.apply_chat_template(
-            messages_for_processor, tokenize=False, add_generation_prompt=True,
-        )
-        image_inputs, video_inputs = process_vision_info(messages_for_processor)
-        inputs = self.processor(
-            text=[text],
-            images=image_inputs,
-            videos=video_inputs,
-            padding=True,
-            return_tensors="pt",
-        )
-        inputs = inputs.to(self.device)
-
-        with torch.no_grad():
-            generated_ids = self.model.generate(**inputs, max_new_tokens=128)
-
-        generated_ids_trimmed = [
-            out_ids[len(in_ids):] for in_ids, out_ids in zip(inputs.input_ids, generated_ids)
-        ]
-        output_text = self.processor.batch_decode(
-            generated_ids_trimmed, skip_special_tokens=True, clean_up_tokenization_spaces=False
-        )[0]
+        output_text = self.show_ui_model.process_message(messages_for_processor)
+        # text = self.processor.apply_chat_template(
+        #     messages_for_processor, tokenize=False, add_generation_prompt=True,
+        # )
+        # image_inputs, video_inputs = process_vision_info(messages_for_processor)
+        # inputs = self.processor(
+        #     text=[text],
+        #     images=image_inputs,
+        #     videos=video_inputs,
+        #     padding=True,
+        #     return_tensors="pt",
+        # )
+        # inputs = inputs.to(self.device)
+        #
+        # with torch.no_grad():
+        #     generated_ids = self.model.generate(**inputs, max_new_tokens=128)
+        #
+        # generated_ids_trimmed = [
+        #     out_ids[len(in_ids):] for in_ids, out_ids in zip(inputs.input_ids, generated_ids)
+        # ]
+        # output_text = self.processor.batch_decode(
+        #     generated_ids_trimmed, skip_special_tokens=True, clean_up_tokenization_spaces=False
+        # )[0]
 
         # Update action history
         self.action_history += output_text + '\n'
         print(f"output_text: {output_text}")
         try:
             click_xy = ast.literal_eval(output_text)["position"]
-            labeled_image = self.draw_point(image_inputs[0], click_xy, 10)
+            labeled_image = self.draw_point(screenshot_path, click_xy, 10)
             labeled_image.save(os.path.splitext(screenshot_path)[0] + "_labeled.png")
         except Exception as e:
             print(f"Error drawing point: {e}")
